@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Маркет.Стенд — Витрина и консоль тестирования API</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <a href="#catalog" data-nav="catalog" aria-label="На главную">
+      <strong>Маркет</strong><mark>API</mark>
+    </a>
+
+    <form id="search-form" role="search">
+      <input type="search" id="search-input" name="q" placeholder="Найти по названию, описанию или SKU" autocomplete="off">
+      <button type="submit">Найти</button>
+    </form>
+
+    <nav aria-label="Основная навигация">
+      <ul>
+        <li><a href="#catalog" data-nav="catalog" aria-current="page">Каталог</a></li>
+        <li><a href="#cart" data-nav="cart">Корзина <output id="cart-badge">0</output></a></li>
+        <li><a href="#orders" data-nav="orders">Заказы</a></li>
+        <li id="nav-staff-item" hidden><a href="#staff" data-nav="staff">Управление</a></li>
+      </ul>
+    </nav>
+
+    <aside id="session-bar" aria-label="Профиль и быстрый вход">
+      <span id="user-display">Гость</span>
+      <button type="button" id="btn-open-auth">Войти</button>
+      <button type="button" id="btn-logout" hidden>Выйти</button>
+    </aside>
+  </header>
+
+  <section id="quick-roles-bar" aria-label="Быстрое переключение ролей для проверки API">
+    <p>Тестовые аккаунты (`seed.py`):</p>
+    <menu>
+      <li><button type="button" data-quick-email="customer@store.local" data-quick-pass="CustomerPass123!">Покупатель</button></li>
+      <li><button type="button" data-quick-email="manager@store.local" data-quick-pass="ManagerPass123!">Менеджер</button></li>
+      <li><button type="button" data-quick-email="admin@store.local" data-quick-pass="AdminPass123!">Администратор</button></li>
+    </menu>
+    <output id="api-status-indicator" aria-live="polite">API: проверка...</output>
+  </section>
+
+  <main>
+    <!-- ВКЛАДКА 1: КАТАЛОГ -->
+    <section id="view-catalog" aria-labelledby="heading-catalog">
+      <aside aria-label="Фильтры каталога">
+        <form id="filter-form">
+          <fieldset>
+            <legend>Категория</legend>
+            <select id="filter-category" name="category_id">
+              <option value="">Все категории</option>
+            </select>
+          </fieldset>
+
+          <fieldset>
+            <legend>Цена, ₽</legend>
+            <label>
+              От
+              <input type="number" id="filter-min-price" name="min_price" min="0" step="100" placeholder="0">
+            </label>
+            <label>
+              До
+              <input type="number" id="filter-max-price" name="max_price" min="0" step="100" placeholder="999999">
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Наличие</legend>
+            <label>
+              <input type="checkbox" id="filter-in-stock" name="in_stock">
+              Только в наличии
+            </label>
+          </fieldset>
+
+          <menu>
+            <li><button type="submit" data-variant="primary">Применить</button></li>
+            <li><button type="reset" id="btn-reset-filters">Сбросить</button></li>
+          </menu>
+        </form>
+      </aside>
+
+      <section aria-label="Список товаров">
+        <header>
+          <h1 id="heading-catalog">Каталог товаров</h1>
+          <p id="catalog-meta">Загрузка позиций...</p>
+        </header>
+
+        <ul id="product-grid" aria-live="polite"></ul>
+
+        <nav id="pagination-bar" aria-label="Пагинация каталога" hidden>
+          <button type="button" id="btn-prev-page">Назад</button>
+          <span id="pagination-info">Страница 1 из 1</span>
+          <button type="button" id="btn-next-page">Вперед</button>
+        </nav>
+      </section>
+    </section>
+
+    <!-- ВКЛАДКА 2: КОРЗИНА -->
+    <section id="view-cart" aria-labelledby="heading-cart" hidden>
+      <header>
+        <h1 id="heading-cart">Корзина</h1>
+        <button type="button" id="btn-clear-cart">Очистить корзину</button>
+      </header>
+
+      <section id="cart-content">
+        <table id="cart-table">
+          <thead>
+            <tr>
+              <th scope="col">Артикул</th>
+              <th scope="col">Товар</th>
+              <th scope="col">Цена</th>
+              <th scope="col">Количество</th>
+              <th scope="col">На складе</th>
+              <th scope="col">Сумма</th>
+              <th scope="col">Действие</th>
+            </tr>
+          </thead>
+          <tbody id="cart-tbody"></tbody>
+        </table>
+
+        <form id="checkout-form">
+          <h2>Оформление заказа</h2>
+          <dl>
+            <dt>Позиций в корзине</dt>
+            <dd id="cart-summary-qty">0</dd>
+            <dt>Итого к оплате</dt>
+            <dd><strong id="cart-summary-total">0 ₽</strong></dd>
+          </dl>
+
+          <label>
+            Адрес доставки
+            <textarea id="checkout-address" name="shipping_address" rows="3" required minlength="5" placeholder="Город, улица, дом, квартира"></textarea>
+          </label>
+
+          <label>
+            Комментарий к заказу
+            <input type="text" id="checkout-comment" name="comment" placeholder="Код домофона, ориентиры">
+          </label>
+
+          <button type="submit" data-variant="primary">Оформить заказ</button>
+        </form>
+      </section>
+    </section>
+
+    <!-- ВКЛАДКА 3: ЗАКАЗЫ -->
+    <section id="view-orders" aria-labelledby="heading-orders" hidden>
+      <header>
+        <h1 id="heading-orders">История и обработка заказов</h1>
+        <form id="orders-filter-form">
+          <label>
+            Фильтр по статусу:
+            <select id="orders-status-filter" name="status">
+              <option value="">Все статусы</option>
+              <option value="pending">pending (ожидает оплаты)</option>
+              <option value="paid">paid (оплачен)</option>
+              <option value="shipped">shipped (отправлен)</option>
+              <option value="completed">completed (завершен)</option>
+              <option value="cancelled">cancelled (отменен)</option>
+            </select>
+          </label>
+        </form>
+      </header>
+
+      <ul id="orders-list" aria-live="polite"></ul>
+    </section>
+
+    <!-- ВКЛАДКА 4: ПАНЕЛЬ МЕНЕДЖЕРА И АДМИНИСТРАТОРА -->
+    <section id="view-staff" aria-labelledby="heading-staff" hidden>
+      <header>
+        <h1 id="heading-staff">Панель управления магазином</h1>
+        <p id="staff-role-hint">Доступно для ролей manager и admin</p>
+      </header>
+
+      <section aria-labelledby="heading-stats">
+        <h2 id="heading-stats">Сводные показатели (`/api/v1/admin/stats`)</h2>
+        <dl id="stats-grid">
+          <dt>Пользователей</dt>
+          <dd id="stat-users">—</dd>
+          <dt>Товаров в базе</dt>
+          <dd id="stat-products">—</dd>
+          <dt>Нет в наличии</dt>
+          <dd id="stat-out-of-stock">—</dd>
+          <dt>Всего заказов</dt>
+          <dd id="stat-orders">—</dd>
+          <dt>Подтвержденная выручка</dt>
+          <dd id="stat-revenue">—</dd>
+        </dl>
+      </section>
+
+      <section id="staff-forms-grid" aria-label="Формы управления каталогом">
+        <form id="form-create-category">
+          <h2>Новая категория</h2>
+          <label>
+            Название категории
+            <input type="text" name="name" required minlength="2" placeholder="Например: Аудиотехника">
+          </label>
+          <label>
+            URL-slug (латиница, дефисы)
+            <input type="text" name="slug" required pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$" placeholder="audio-gear">
+          </label>
+          <label>
+            Описание
+            <input type="text" name="description" placeholder="Краткое описание раздела">
+          </label>
+          <button type="submit" data-variant="primary">Создать категорию</button>
+        </form>
+
+        <form id="form-create-product">
+          <h2>Новый товар</h2>
+          <label>
+            Категория
+            <select id="staff-product-category" name="category_id" required></select>
+          </label>
+          <label>
+            Артикул (SKU)
+            <input type="text" name="sku" required minlength="2" placeholder="DAC-FIIL-K9">
+          </label>
+          <label>
+            Наименование товара
+            <input type="text" name="name" required minlength="2" placeholder="ЦАП и усилитель для наушников">
+          </label>
+          <label>
+            Цена, ₽
+            <input type="number" name="price" required min="0.01" step="0.01" placeholder="19990.00">
+          </label>
+          <label>
+            Остаток на складе (шт.)
+            <input type="number" name="stock" required min="0" step="1" value="10">
+          </label>
+          <label>
+            Описание товара
+            <input type="text" name="description" placeholder="Технические характеристики">
+          </label>
+          <button type="submit" data-variant="primary">Добавить в каталог</button>
+        </form>
+      </section>
+
+      <section id="admin-users-section" aria-labelledby="heading-users" hidden>
+        <h2 id="heading-users">Управление пользователями (`/api/v1/admin/users` — только Admin)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Email</th>
+              <th scope="col">Имя</th>
+              <th scope="col">Роль</th>
+              <th scope="col">Статус</th>
+              <th scope="col">Действие</th>
+            </tr>
+          </thead>
+          <tbody id="admin-users-tbody"></tbody>
+        </table>
+      </section>
+    </section>
+  </main>
+
+  <!-- МОДАЛЬНОЕ ОКНО ВХОДА И РЕГИСТРАЦИИ -->
+  <dialog id="auth-dialog" aria-labelledby="auth-dialog-title">
+    <article>
+      <header>
+        <h2 id="auth-dialog-title">Вход или регистрация</h2>
+        <button type="button" id="btn-close-auth" aria-label="Закрыть окно">Закрыть</button>
+      </header>
+
+      <form id="login-form">
+        <fieldset>
+          <legend>Вход по существующему аккаунту</legend>
+          <label>
+            Электронная почта
+            <input type="email" name="email" required placeholder="customer@store.local">
+          </label>
+          <label>
+            Пароль
+            <input type="password" name="password" required placeholder="••••••••">
+          </label>
+          <button type="submit" data-variant="primary">Войти</button>
+        </fieldset>
+      </form>
+
+      <form id="register-form">
+        <fieldset>
+          <legend>Регистрация нового покупателя</legend>
+          <label>
+            Полное имя
+            <input type="text" name="full_name" required minlength="2" placeholder="Виталий Соколов">
+          </label>
+          <label>
+            Электронная почта
+            <input type="email" name="email" required placeholder="user@example.com">
+          </label>
+          <label>
+            Пароль (минимум 8 символов)
+            <input type="password" name="password" required minlength="8" placeholder="Не менее 8 символов">
+          </label>
+          <button type="submit">Зарегистрироваться</button>
+        </fieldset>
+      </form>
+    </article>
+  </dialog>
+
+  <!-- ЖУРНАЛ ЗАПРОСОВ И УВЕДОМЛЕНИЯ -->
+  <aside id="toast-container" aria-live="assertive"></aside>
+
+  <footer>
+    <p>Тестовый стенд серверного REST API интернет-магазина (`Flask 3.0` + `SQLAlchemy 2.0`). Семантическая верстка без использования `div`.</p>
+  </footer>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
